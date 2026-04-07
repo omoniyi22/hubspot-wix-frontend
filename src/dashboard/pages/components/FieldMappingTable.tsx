@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react'
 import { Button } from './../components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './../components/ui/select'
-import { Save, Loader2, Info } from 'lucide-react'
+import { Save, Loader2, Info, Mail, Phone, User } from 'lucide-react'
 import { useToast } from './../hooks/use-toast'
 import { FieldMapping, FieldMappingConfig, AvailableField } from './../types'
 
@@ -16,6 +16,7 @@ interface FieldMappingTableProps {
   hubSpotProperties: AvailableField[]
   onSave: (updates: Array<{ wixField: string; direction?: string; transform?: string | null; isActive?: boolean }>) => Promise<void>
   isLoading?: boolean
+  sampleSubmission?: any // Optional sample data for preview
 }
 
 export function FieldMappingTable({ 
@@ -24,7 +25,8 @@ export function FieldMappingTable({
   wixFields, 
   hubSpotProperties, 
   onSave,
-  isLoading 
+  isLoading,
+  sampleSubmission 
 }: FieldMappingTableProps) {
   const { toast } = useToast()
   const [mappings, setMappings] = useState<FieldMapping[]>([])
@@ -34,15 +36,97 @@ export function FieldMappingTable({
     if (initialMappings?.mappings && initialMappings.mappings.length > 0) {
       setMappings(initialMappings.mappings)
     } else {
-      // Default fallback mappings
+      // Default fallback mappings with correct field paths
       setMappings([
-        { wixField: 'email', hubSpotProperty: 'email', direction: 'bidirectional', transform: 'email', isEssential: true, isActive: true },
-        { wixField: 'firstName', hubSpotProperty: 'firstname', direction: 'bidirectional', transform: 'trim', isEssential: true, isActive: true },
-        { wixField: 'lastName', hubSpotProperty: 'lastname', direction: 'bidirectional', transform: 'trim', isEssential: true, isActive: true },
-        { wixField: 'phone', hubSpotProperty: 'phone', direction: 'bidirectional', transform: 'trim', isEssential: true, isActive: true },
+        { 
+          wixField: 'emails.items[0].email', 
+          hubSpotProperty: 'email', 
+          direction: 'bidirectional', 
+          transform: 'email', 
+          isEssential: true, 
+          isActive: true,
+          displayName: 'Email'
+        },
+        { 
+          wixField: 'info.name.first', 
+          hubSpotProperty: 'firstname', 
+          direction: 'bidirectional', 
+          transform: 'trim', 
+          isEssential: true, 
+          isActive: true,
+          displayName: 'First Name'
+        },
+        { 
+          wixField: 'info.name.last', 
+          hubSpotProperty: 'lastname', 
+          direction: 'bidirectional', 
+          transform: 'trim', 
+          isEssential: true, 
+          isActive: true,
+          displayName: 'Last Name'
+        },
+        { 
+          wixField: 'phones.items[0].phone', 
+          hubSpotProperty: 'phone', 
+          direction: 'bidirectional', 
+          transform: 'trim', 
+          isEssential: true, 
+          isActive: true,
+          displayName: 'Phone'
+        },
       ])
     }
   }, [initialMappings])
+
+  // Helper function to get a readable display name for the field
+  const getFieldDisplayName = (wixFieldPath: string): string => {
+    const displayNames: Record<string, string> = {
+      'emails.items[0].email': 'Email Address',
+      'info.name.first': 'First Name',
+      'info.name.last': 'Last Name',
+      'phones.items[0].phone': 'Phone Number',
+      'primaryInfo.email': 'Primary Email',
+      'primaryInfo.phone': 'Primary Phone',
+      'info.locale': 'Locale',
+      'memberInfo.status': 'Member Status',
+      'memberInfo.email': 'Member Email',
+    }
+    
+    return displayNames[wixFieldPath] || wixFieldPath.split('.').pop() || wixFieldPath
+  }
+
+  // Helper function to extract sample value for preview
+  const getSampleValue = (wixFieldPath: string): string => {
+    if (!sampleSubmission?.formData) return ''
+    
+    const getValueByPath = (obj: any, path: string): any => {
+      const parts = path.split('.')
+      let current = obj
+      
+      for (const part of parts) {
+        if (current === undefined || current === null) return undefined
+        
+        // Handle array access like items[0]
+        const arrayMatch = part.match(/(\w+)\[(\d+)\]/)
+        if (arrayMatch) {
+          const [, arrayName, index] = arrayMatch
+          current = current[arrayName]?.[parseInt(index)]
+        } else {
+          current = current[part]
+        }
+      }
+      
+      return current
+    }
+    
+    const value = getValueByPath(sampleSubmission.formData, wixFieldPath)
+    
+    if (typeof value === 'string') return value
+    if (typeof value === 'object' && value?.email) return value.email
+    if (Array.isArray(value) && value[0]?.email) return value[0].email
+    
+    return value ? String(value) : ''
+  }
 
   const updateMapping = (index: number, field: keyof FieldMapping, value: string | boolean) => {
     const newMappings = [...mappings]
@@ -109,6 +193,7 @@ export function FieldMappingTable({
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Wix Field</th>
+                <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Sample Value</th>
                 <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">HubSpot Property</th>
                 <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Sync Direction</th>
                 <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Transform</th>
@@ -116,90 +201,119 @@ export function FieldMappingTable({
               </tr>
             </thead>
             <tbody>
-              {mappings.map((mapping, index) => (
-                <tr key={`${mapping.wixField}-${index}`} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">{mapping.wixField}</span>
-                      {mapping.isEssential && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          Essential
-                        </span>
+              {mappings.map((mapping, index) => {
+                const sampleValue = getSampleValue(mapping.wixField)
+                
+                return (
+                  <tr key={`${mapping.wixField}-${index}`} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {/* Field icon based on type */}
+                        {mapping.wixField.includes('email') && <Mail className="h-4 w-4 text-gray-500" />}
+                        {mapping.wixField.includes('phone') && <Phone className="h-4 w-4 text-gray-500" />}
+                        {mapping.wixField.includes('name') && <User className="h-4 w-4 text-gray-500" />}
+                        
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {getFieldDisplayName(mapping.wixField)}
+                          </span>
+                          <div className="text-xs text-gray-500 font-mono mt-1">
+                            {mapping.wixField}
+                          </div>
+                        </div>
+                        
+                        {mapping.isEssential && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 ml-2">
+                            Essential
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    
+                    <td className="px-4 py-3">
+                      {sampleValue ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-700 break-all max-w-xs">
+                            {sampleValue}
+                          </span>
+                          {sampleValue.includes('@') && (
+                            <Mail className="h-3 w-3 text-green-600" />
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">No sample data</span>
                       )}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      → {mapping.hubSpotProperty}
-                    </div>
-                  </td>
-                  
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-gray-700 font-mono">{mapping.hubSpotProperty}</span>
-                  </td>
-                  
-                  <td className="px-4 py-3">
-                    <Select
-                      value={mapping.direction}
-                      onValueChange={(value: any) => updateMapping(index, 'direction', value)}
-                    >
-                      <SelectTrigger className="w-[160px] h-9 text-sm border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-md">
-                        {directionOptions.map(option => (
-                          <SelectItem 
-                            key={option.value} 
-                            value={option.value} 
-                            className="text-sm bg-white hover:bg-gray-100 cursor-pointer px-3 py-2 [&_svg]:hidden"
-
-                          >
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </td>
-                  
-                  <td className="px-4 py-3">
-                    <Select
-                      value={mapping.transform || 'none'}
-                      onValueChange={(value) => updateMapping(index, 'transform', value === 'none' ? undefined : value as any)}
-                    >
-                      <SelectTrigger className="w-[140px] h-9 text-sm border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-md">
-                        {transformOptions.map(option => (
-                          <SelectItem 
-                            key={option.value} 
-                            value={option.value} 
-                            className="text-sm bg-white hover:bg-gray-100 cursor-pointer px-3 py-2 [&_svg]:hidden"
-
-                          >
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </td>
-                  
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={mapping.isActive !== false}
-                          onChange={() => updateMapping(index, 'isActive', !mapping.isActive)}
-                        />
-                        <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                      </label>
-                      <span className="text-xs text-gray-600">
-                        {mapping.isActive !== false ? 'Active' : 'Disabled'}
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-700 font-mono">{mapping.hubSpotProperty}</span>
+                      </div>
+                    </td>
+                    
+                    <td className="px-4 py-3">
+                      <Select
+                        value={mapping.direction}
+                        onValueChange={(value: any) => updateMapping(index, 'direction', value)}
+                      >
+                        <SelectTrigger className="w-[160px] h-9 text-sm border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-md">
+                          {directionOptions.map(option => (
+                            <SelectItem 
+                              key={option.value} 
+                              value={option.value} 
+                              className="text-sm bg-white hover:bg-gray-100 cursor-pointer px-3 py-2 [&_svg]:hidden"
+                            >
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    
+                    <td className="px-4 py-3">
+                      <Select
+                        value={mapping.transform || 'none'}
+                        onValueChange={(value) => updateMapping(index, 'transform', value === 'none' ? undefined : value as any)}
+                      >
+                        <SelectTrigger className="w-[140px] h-9 text-sm border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-md">
+                          {transformOptions.map(option => (
+                            <SelectItem 
+                              key={option.value} 
+                              value={option.value} 
+                              className="text-sm bg-white hover:bg-gray-100 cursor-pointer px-3 py-2 [&_svg]:hidden"
+                            >
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={mapping.isActive !== false}
+                            onChange={() => updateMapping(index, 'isActive', !mapping.isActive)}
+                          />
+                          <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                        </label>
+                        <span className="text-xs text-gray-600">
+                          {mapping.isActive !== false ? 'Active' : 'Disabled'}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -212,6 +326,9 @@ export function FieldMappingTable({
             <p>• New fields from Wix contacts are automatically discovered and added to this list.</p>
             <p>• You can only change sync direction, text transformation, and enable/disable fields.</p>
             <p>• Inactive fields will not be synced in either direction.</p>
+            {sampleSubmission && (
+              <p className="mt-2 text-blue-700">✓ Showing sample values from recent submission</p>
+            )}
           </div>
         </div>
       </CardContent>

@@ -2,9 +2,11 @@
 export interface FieldMapping {
   wixField: string
   hubSpotProperty: string
-  direction: 'wix_to_hubspot' | 'hubspot_to_wix' | 'bidirectional'
-  transform?: 'trim' | 'lowercase' | 'uppercase' | 'email'
-  isActive: boolean
+  direction?: 'wix_to_hubspot' | 'hubspot_to_wix' | 'bidirectional'
+  transform?: string | null
+  isEssential?: boolean
+  isActive?: boolean
+  displayName?: string // Add this field
 }
 
 export interface FieldMappingConfig {

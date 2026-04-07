@@ -58,7 +58,7 @@ export const mappingApi = {
   },
   updateMapping: async (instanceId: string, updates: Array<{ wixField: string; direction?: string; transform?: string | null; isActive?: boolean }>) => {
     // New API expects { updates: [...] }
-    console.log({instanceId, updates})
+    console.log({ instanceId, updates })
     const response = await apiClient.put(`/api/mapping/${instanceId}`, { updates })
     return response.data
   },
@@ -87,10 +87,7 @@ export const syncApi = {
     }
     return { logs: [], pagination: null, stats: null }
   },
-  getFormSubmissions: async (instanceId: string, limit = 20) => {
-    const response = await apiClient.get(`/api/forms/submissions/${instanceId}?limit=${limit}`)
-    return response.data
-  },
+
   retrySync: async (logId: string) => {
     const response = await apiClient.post(`/api/sync/retry/${logId}`)
     return response.data
@@ -106,7 +103,30 @@ export const syncApi = {
   getFailedSyncs: async (instanceId: string) => {
     const response = await apiClient.get(`/api/sync/failed/${instanceId}`)
     return response.data
-  }
+  },
+  getFormSubmissions: async (instanceId: string, limit = 50, page = 1) => {
+    const response = await apiClient.get(`/api/forms/submissions/${instanceId}?limit=${limit}&page=${page}`)
+    console.log("getFormSubmissions - Response:", response.data)
+    if (response.data?.success && response.data?.data) {
+      console.log("getFormSubmissions - Submissions data:", response.data.data)
+      return response.data.data
+    }
+    console.log("getFormSubmissions - No data found, returning default")
+    return { submissions: [], pagination: null, stats: null }
+  },
+
+  getFormStats: async (instanceId: string) => {
+    const response = await apiClient.get(`/api/forms/stats/${instanceId}`)
+    console.log("getFormStats - Response:", response.data)
+    return response.data
+  },
+
+  updateLeadStatus: async (submissionId: string, leadStatus: string, leadScore?: number) => {
+    const response = await apiClient.put(`/api/forms/submissions/${submissionId}/status`, { leadStatus, leadScore })
+    console.log("updateLeadStatus - Request payload:", { submissionId, leadStatus, leadScore })
+    console.log("updateLeadStatus - Response:", response.data)
+    return response.data
+  },
 }
 
 export default apiClient

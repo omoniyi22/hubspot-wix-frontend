@@ -204,9 +204,6 @@ function App() {
 
   // FIXED: handleSaveMapping now receives updates array directly from FieldMappingTable
   const handleSaveMapping = async (updates: Array<{ wixField: string; direction?: string; transform?: string | null; isActive?: boolean }>) => {
-
-    console.log('📥 App.tsx received updates:', updates)  // ADD THIS
-  console.log('📥 Updates count:', updates.length)
     setIsLoading(prev => ({ ...prev, saving: true }))
     try {
       // Send updates directly to API (already in correct format)
