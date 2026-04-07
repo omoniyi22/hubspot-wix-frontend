@@ -220,6 +220,7 @@ function App() {
                 direction: update.direction || m.direction,
                 transform: update.transform !== undefined ? update.transform : m.transform,
                 isActive: update.isActive !== undefined ? update.isActive : m.isActive,
+                
               }
             }
             return m
