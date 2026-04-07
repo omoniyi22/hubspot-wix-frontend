@@ -229,6 +229,7 @@ function App() {
         setMappings(updatedMappings)
       }
       
+      
       toast({
         title: 'Success',
         description: 'Field mappings saved successfully',
