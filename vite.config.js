@@ -14,15 +14,15 @@ export default defineConfig({
     port: 3001,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'https://hubspoty.onrender.com',
         changeOrigin: true,
       },
       '/auth': {
-        target: 'http://localhost:8000',
+        target: 'https://hubspoty.onrender.com',
         changeOrigin: true,
       },
       '/webhook': {
-        target: 'http://localhost:8000',
+        target: 'https://hubspoty.onrender.com',
         changeOrigin: true,
       },
     },
